@@ -29,6 +29,8 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
+	mux.HandleFunc("GET /openapi.yaml", handleOpenAPISpec)
+	mux.HandleFunc("GET /docs", handleDocs)
 
 	server := &http.Server{
 		Addr:              config.ListenAddr(),

@@ -1,0 +1,496 @@
+openapi: 3.0.3
+info:
+  title: HB-Api-Cocktail
+  version: 1.0.0
+  description: |
+    API du domaine Hobbies dediee aux cocktails.
+
+    Contenu textuel des recettes en anglais.
+
+    Deux familles d'endpoints :
+      - Lecture publique : consultation et recherche des cocktails et referentiels.
+      - Ecriture locale (tag `local`) : ajout d'une recette et upload d'image,
+        joignable uniquement en loopback 127.0.0.1 et protege par un token.
+
+    Ce document decrit l'integralite de la surface v1. La spec et sa documentation
+    sont les seules routes reellement exposees a ce stade ; les routes metier sont
+    le contrat cible et seront implementees ulterieurement.
+servers:
+  - url: http://127.0.0.1:8080
+    description: Service local
+tags:
+  - name: public
+    description: Lecture publique des cocktails et de la recherche.
+  - name: referentials
+    description: Referentiels de lecture publique (ingredients, categories, tags).
+  - name: images
+    description: Service d'images des cocktails.
+  - name: local
+    description: |
+      Ecriture locale non publique. Joignable uniquement en loopback (127.0.0.1)
+      et protege par un token via l'en-tete Authorization. Ne pas exposer.
+  - name: system
+    description: Sonde de disponibilite.
+paths:
+  /cocktails:
+    get:
+      tags: [public]
+      summary: Lister les cocktails
+      description: Liste paginee des cocktails, filtrable par category, strength, alcoholic, season et tag.
+      operationId: listCocktails
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryFilter'
+        - $ref: '#/components/parameters/StrengthFilter'
+        - $ref: '#/components/parameters/AlcoholicFilter'
+        - $ref: '#/components/parameters/SeasonFilter'
+        - $ref: '#/components/parameters/TagFilter'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Liste paginee des cocktails.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CocktailList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [local]
+      summary: Ajouter un cocktail et son image
+      description: |
+        Cree une recette et televerse son image dans la meme requete multipart.
+        Endpoint non public : joignable uniquement en loopback (127.0.0.1) et
+        protege par un token via l'en-tete Authorization.
+      operationId: createCocktail
+      security:
+        - localWriteToken: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CocktailCreateForm'
+      responses:
+        '201':
+          description: Cocktail cree.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cocktail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cocktails/search:
+    get:
+      tags: [public]
+      summary: Rechercher des cocktails par ingredients
+      description: |
+        Recherche les cocktails contenant les ingredients fournis.
+        Le parametre `match` controle la strategie : `all` exige tous les
+        ingredients (defaut), `any` en exige au moins un.
+      operationId: searchCocktails
+      security: []
+      parameters:
+        - name: ingredients
+          in: query
+          required: true
+          description: Noms d'ingredients separes par des virgules.
+          schema:
+            type: string
+          example: lime juice,mint
+        - name: match
+          in: query
+          required: false
+          description: Strategie de correspondance.
+          schema:
+            type: string
+            enum: [all, any]
+            default: all
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Liste paginee des cocktails correspondants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CocktailList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /cocktails/{id}:
+    get:
+      tags: [public]
+      summary: Recuperer un cocktail
+      operationId: getCocktail
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CocktailId'
+      responses:
+        '200':
+          description: Cocktail trouve.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cocktail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /ingredients:
+    get:
+      tags: [referentials]
+      summary: Lister les ingredients
+      operationId: listIngredients
+      security: []
+      responses:
+        '200':
+          description: Liste des ingredients.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+  /categories:
+    get:
+      tags: [referentials]
+      summary: Lister les categories
+      description: Categories distinctes portees par les cocktails.
+      operationId: listCategories
+      security: []
+      responses:
+        '200':
+          description: Liste des categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [Classic, Modern, Refreshing]
+  /tags:
+    get:
+      tags: [referentials]
+      summary: Lister les tags
+      description: Tags distincts portes par les cocktails.
+      operationId: listTags
+      security: []
+      responses:
+        '200':
+          description: Liste des tags.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [iba, sour, refreshing, mocktail]
+  /images/{name}:
+    get:
+      tags: [images]
+      summary: Recuperer l'image d'un cocktail
+      description: Sert le fichier image identifie par son nom.
+      operationId: getImage
+      security: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Nom du fichier image.
+          schema:
+            type: string
+          example: margarita.jpg
+      responses:
+        '200':
+          description: Fichier image.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /health:
+    get:
+      tags: [system]
+      summary: Sonde de disponibilite
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Service disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+components:
+  securitySchemes:
+    localWriteToken:
+      type: http
+      scheme: bearer
+      description: |
+        Token d'ecriture locale transmis dans l'en-tete Authorization.
+        Reserve aux appels loopback 127.0.0.1.
+  parameters:
+    CocktailId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant du cocktail.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 1
+    CategoryFilter:
+      name: category
+      in: query
+      required: false
+      description: Filtre sur la categorie.
+      schema:
+        type: string
+      example: Classic
+    StrengthFilter:
+      name: strength
+      in: query
+      required: false
+      description: Filtre sur la force.
+      schema:
+        type: string
+      example: Strong
+    AlcoholicFilter:
+      name: alcoholic
+      in: query
+      required: false
+      description: Filtre alcoolise. `false` cible les mocktails.
+      schema:
+        type: boolean
+      example: false
+    SeasonFilter:
+      name: season
+      in: query
+      required: false
+      description: Filtre sur la saison.
+      schema:
+        type: string
+      example: Summer
+    TagFilter:
+      name: tag
+      in: query
+      required: false
+      description: Filtre sur un tag.
+      schema:
+        type: string
+      example: refreshing
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Nombre maximum d'elements retournes.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      required: false
+      description: Nombre d'elements ignores en tete de liste.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  schemas:
+    Cocktail:
+      type: object
+      required: [id, name, instructions, glass, category, strength, alcoholic, season, tags, ingredients]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Margarita
+        instructions:
+          type: string
+          example: Shake tequila, triple sec and lime juice with ice, then strain into the glass.
+        glass:
+          type: string
+          example: Margarita glass
+        category:
+          type: string
+          example: Classic
+        strength:
+          type: string
+          example: Strong
+        alcoholic:
+          type: boolean
+          example: true
+        season:
+          type: string
+          example: Summer
+        image:
+          type: string
+          description: Nom de l'image, utilisable avec GET /images/{name}. Vide si absente.
+          example: margarita.jpg
+        tags:
+          type: array
+          items:
+            type: string
+          example: [tequila, sour, iba]
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/CocktailIngredient'
+    CocktailIngredient:
+      type: object
+      required: [name, quantity, unit]
+      properties:
+        name:
+          type: string
+          example: Tequila
+        quantity:
+          type: string
+          example: '50'
+        unit:
+          type: string
+          example: ml
+    CocktailList:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cocktail'
+        total:
+          type: integer
+          description: Nombre total d'elements correspondant au filtre.
+          example: 42
+        limit:
+          type: integer
+          example: 20
+        offset:
+          type: integer
+          example: 0
+    Ingredient:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Tequila
+    CocktailCreateForm:
+      type: object
+      required: [cocktail]
+      properties:
+        cocktail:
+          $ref: '#/components/schemas/CocktailInput'
+        image:
+          type: string
+          format: binary
+          description: Fichier image de la recette.
+    CocktailInput:
+      type: object
+      required: [name, instructions, glass, category, strength, alcoholic]
+      properties:
+        name:
+          type: string
+          example: Margarita
+        instructions:
+          type: string
+          example: Shake tequila, triple sec and lime juice with ice, then strain into the glass.
+        glass:
+          type: string
+          example: Margarita glass
+        category:
+          type: string
+          example: Classic
+        strength:
+          type: string
+          example: Strong
+        alcoholic:
+          type: boolean
+          example: true
+        season:
+          type: string
+          example: Summer
+        tags:
+          type: array
+          items:
+            type: string
+          example: [tequila, sour, iba]
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/CocktailIngredientInput'
+    CocktailIngredientInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: Tequila
+        quantity:
+          type: string
+          example: '50'
+        unit:
+          type: string
+          example: ml
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Code d'erreur stable, lisible par machine.
+          example: not_found
+        message:
+          type: string
+          description: Description lisible par un humain.
+          example: cocktail not found
+  responses:
+    BadRequest:
+      description: Requete invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token d'ecriture manquant ou invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Appel refuse (origine non loopback).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ressource introuvable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

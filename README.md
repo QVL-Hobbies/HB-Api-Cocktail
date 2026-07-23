@@ -92,6 +92,8 @@ go run ./tools/seed
 ├── main.go                     Point d'entrée : config, ouverture base, serveur HTTP, arrêt gracieux
 ├── config.go                   Chargement de la configuration depuis l'environnement
 ├── health.go                   Handler GET /health
+├── openapi.go                  Service de la spec OpenAPI et de la doc Redoc
+├── api/openapi.yaml            Contrat OpenAPI (spec-first) de toute la surface v1
 ├── internal/database/          Ouverture SQLite + schéma partagés (service + seed)
 ├── tools/                      Scripts d'outillage local (voir tools/README.md)
 │   └── seed/                   Script de chargement d'un jeu de test
@@ -100,8 +102,30 @@ go run ./tools/seed
 └── README.md
 ```
 
+## Contrat OpenAPI
+
+Le contrat de l'API est écrit en spec-first, à la main, dans `api/openapi.yaml`
+(OpenAPI 3.0.3). Il décrit l'intégralité de la surface v1 : lecture publique des
+cocktails, recherche par ingrédients, référentiels, service d'images et endpoint
+local d'écriture (non public). La spec fait foi ; elle est embarquée dans le
+binaire (`//go:embed`) et servie publiquement.
+
+| Ressource            | URL                                   |
+| -------------------- | ------------------------------------- |
+| Spec brute (YAML)    | `http://127.0.0.1:8080/openapi.yaml`  |
+| Documentation Redoc  | `http://127.0.0.1:8080/docs`          |
+
+La doc Redoc est un HTML statique minimal qui charge le bundle Redoc depuis un
+CDN et pointe sur `/openapi.yaml` : aucune dépendance Go ni build front ajoutés.
+
 ## Endpoints
 
-| Méthode | Chemin    | Description        | Réponse            |
-| ------- | --------- | ------------------ | ------------------ |
-| `GET`   | `/health` | Sonde de vivacité  | `200 {"status":"ok"}` |
+Seuls `/health` et les routes de documentation sont réellement exposés à ce
+stade. Les routes métier décrites dans `api/openapi.yaml` sont le contrat cible
+et seront implémentées ultérieurement.
+
+| Méthode | Chemin         | Description                     | Réponse                     |
+| ------- | -------------- | ------------------------------- | --------------------------- |
+| `GET`   | `/health`      | Sonde de vivacité               | `200 {"status":"ok"}`       |
+| `GET`   | `/openapi.yaml`| Contrat OpenAPI (spec brute)    | `200` (application/yaml)    |
+| `GET`   | `/docs`        | Documentation Redoc             | `200` (text/html)           |
