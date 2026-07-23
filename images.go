@@ -20,6 +20,12 @@ var imageContentTypes = map[string]string{
 	".webp": "image/webp",
 }
 
+var imageExtensionsByContentType = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+	"image/webp": ".webp",
+}
+
 func handleGetImage(imagesDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
@@ -86,19 +92,34 @@ func validateImageName(name string) (string, bool) {
 	return contentType, ok
 }
 
-func resolveContainedImagePath(imagesDir, name string) (string, error) {
-	fullPath := filepath.Join(imagesDir, name)
+func containedPath(dir, name string) (string, error) {
+	if _, ok := validateImageName(name); !ok {
+		return "", errImageNotFound
+	}
 
-	absDir, err := filepath.Abs(imagesDir)
+	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err
 	}
-	absFull, err := filepath.Abs(fullPath)
+	absFull, err := filepath.Abs(filepath.Join(dir, name))
 	if err != nil {
 		return "", err
 	}
 	if !strings.HasPrefix(absFull, absDir+string(os.PathSeparator)) {
 		return "", errImageNotFound
+	}
+	return absFull, nil
+}
+
+func resolveContainedImagePath(imagesDir, name string) (string, error) {
+	absFull, err := containedPath(imagesDir, name)
+	if err != nil {
+		return "", err
+	}
+
+	absDir, err := filepath.Abs(imagesDir)
+	if err != nil {
+		return "", err
 	}
 
 	resolved, err := filepath.EvalSymlinks(absFull)
@@ -112,4 +133,30 @@ func resolveContainedImagePath(imagesDir, name string) (string, error) {
 		return "", errImageNotFound
 	}
 	return resolved, nil
+}
+
+func storeImageFile(path string, content []byte) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := file.Write(content); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return err
+	}
+	return file.Close()
+}
+
+func detectImageExtension(content []byte) (string, bool) {
+	head := content
+	if len(head) > 512 {
+		head = head[:512]
+	}
+	contentType := http.DetectContentType(head)
+	if i := strings.IndexByte(contentType, ';'); i >= 0 {
+		contentType = strings.TrimSpace(contentType[:i])
+	}
+	ext, ok := imageExtensionsByContentType[contentType]
+	return ext, ok
 }

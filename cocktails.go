@@ -151,9 +151,7 @@ func handleGetCocktail(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		ctx := r.Context()
-		row := db.QueryRowContext(ctx, selectCocktailColumns+" WHERE id = ?", id)
-		c, err := scanCocktail(row)
+		c, err := loadCocktail(r.Context(), db, id)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				writeError(w, http.StatusNotFound, "not_found", "cocktail not found")
@@ -163,20 +161,27 @@ func handleGetCocktail(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		items := []cocktail{c}
-		ids := []int64{c.ID}
-		index := map[int64]int{c.ID: 0}
-		if err := attachTags(ctx, db, items, ids, index); err != nil {
-			writeInternalError(w)
-			return
-		}
-		if err := attachIngredients(ctx, db, items, ids, index); err != nil {
-			writeInternalError(w)
-			return
-		}
-
-		writeJSON(w, http.StatusOK, items[0])
+		writeJSON(w, http.StatusOK, c)
 	}
+}
+
+func loadCocktail(ctx context.Context, db *sql.DB, id int64) (cocktail, error) {
+	row := db.QueryRowContext(ctx, selectCocktailColumns+" WHERE id = ?", id)
+	c, err := scanCocktail(row)
+	if err != nil {
+		return cocktail{}, err
+	}
+
+	items := []cocktail{c}
+	ids := []int64{c.ID}
+	index := map[int64]int{c.ID: 0}
+	if err := attachTags(ctx, db, items, ids, index); err != nil {
+		return cocktail{}, err
+	}
+	if err := attachIngredients(ctx, db, items, ids, index); err != nil {
+		return cocktail{}, err
+	}
+	return items[0], nil
 }
 
 func handleSearchCocktails(db *sql.DB) http.HandlerFunc {

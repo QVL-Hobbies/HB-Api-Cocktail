@@ -2,8 +2,8 @@
 *.db-shm
 *.db-wal
 /data/
-.env
-.env.local
+.env*
+!.env.example
 *.exe
 /hb-api-cocktail
 /tools/seed/data.json

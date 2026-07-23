@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -28,6 +29,12 @@ func run() error {
 	defer db.Close()
 
 	mux := http.NewServeMux()
+	if config.LocalWriteToken != "" {
+		if err := os.MkdirAll(config.ImagesDir, 0o755); err != nil {
+			return err
+		}
+		mux.HandleFunc("POST /cocktails", requireLocalWrite(config, handleCreateCocktail(db, config)))
+	}
 	mux.HandleFunc("GET /cocktails", handleListCocktails(db))
 	mux.HandleFunc("GET /cocktails/search", handleSearchCocktails(db))
 	mux.HandleFunc("GET /cocktails/{id}", handleGetCocktail(db))

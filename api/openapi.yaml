@@ -74,6 +74,11 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/CocktailCreateForm'
+            encoding:
+              cocktail:
+                contentType: application/json
+              image:
+                contentType: image/jpeg, image/png, image/webp
       responses:
         '201':
           description: Cocktail cree.
@@ -87,6 +92,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /cocktails/search:
     get:
       tags: [public]
@@ -416,11 +425,16 @@ components:
       required: [cocktail]
       properties:
         cocktail:
-          $ref: '#/components/schemas/CocktailInput'
+          allOf:
+            - $ref: '#/components/schemas/CocktailInput'
+          description: Recette serialisee en JSON dans la part `cocktail`.
         image:
           type: string
           format: binary
-          description: Fichier image de la recette.
+          description: |
+            Fichier image de la recette. Types acceptes : jpeg, png, webp,
+            valides sur le contenu reel du fichier. Taille maximale : 2 Mo.
+            Le nom du fichier stocke est genere par le serveur, le client ne le fournit pas.
     CocktailInput:
       type: object
       required: [name, instructions, glass, category, strength, alcoholic]
@@ -502,6 +516,12 @@ components:
             $ref: '#/components/schemas/Error'
     Forbidden:
       description: Appel refuse (origine non loopback).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PayloadTooLarge:
+      description: Charge trop volumineuse (image superieure a 2 Mo).
       content:
         application/json:
           schema:
