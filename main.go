@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -35,13 +36,14 @@ func run() error {
 		}
 		mux.HandleFunc("POST /cocktails", requireLocalWrite(config, handleCreateCocktail(db, config)))
 	}
+	resolvedImagesDir := resolveImagesDir(config.ImagesDir)
 	mux.HandleFunc("GET /cocktails", handleListCocktails(db))
 	mux.HandleFunc("GET /cocktails/search", handleSearchCocktails(db))
 	mux.HandleFunc("GET /cocktails/{id}", handleGetCocktail(db))
 	mux.HandleFunc("GET /ingredients", handleListIngredients(db))
 	mux.HandleFunc("GET /categories", handleListCategories(db))
 	mux.HandleFunc("GET /tags", handleListTags(db))
-	mux.HandleFunc("GET /images/{name}", handleGetImage(config.ImagesDir))
+	mux.HandleFunc("GET /images/{name}", handleGetImage(resolvedImagesDir))
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /openapi.yaml", handleOpenAPISpec)
 	mux.HandleFunc("GET /docs", handleDocs)
@@ -50,6 +52,9 @@ func run() error {
 		Addr:              config.ListenAddr(),
 		Handler:           withSecurityHeaders(mux),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -74,9 +79,22 @@ func run() error {
 	}
 }
 
+func resolveImagesDir(dir string) string {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return dir
+	}
+	resolved, err := filepath.EvalSymlinks(absDir)
+	if err != nil {
+		return absDir
+	}
+	return resolved
+}
+
 func withSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})
 }

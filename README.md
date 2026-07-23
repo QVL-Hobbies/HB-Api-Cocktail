@@ -56,7 +56,7 @@ idempotente (`CREATE TABLE IF NOT EXISTS`). Les clés étrangères sont activée
 
 | Table                  | Rôle                                                         |
 | ---------------------- | ------------------------------------------------------------ |
-| `cocktails`            | Recette : `name`, `instructions`, `glass`, `category`, `strength`, `alcoholic`, `season`, `image_name`, `image_path` |
+| `cocktails`            | Recette : `name`, `instructions`, `glass`, `category`, `strength`, `alcoholic`, `season`, `image_name` |
 | `ingredients`          | Ingrédient unique par `name`                                 |
 | `cocktail_ingredients` | Liaison cocktail ↔ ingrédient (`quantity`, `unit`)           |
 | `cocktail_tags`        | Tags multiples par cocktail (`cocktail_id`, `tag`)           |
@@ -91,6 +91,12 @@ go run ./tools/seed
 .
 ├── main.go                     Point d'entrée : config, ouverture base, serveur HTTP, arrêt gracieux
 ├── config.go                   Chargement de la configuration depuis l'environnement
+├── cocktails.go                Lecture et recherche des cocktails (list, get, search)
+├── referentials.go             Référentiels de lecture (ingredients, categories, tags)
+├── images.go                   Service d'images : validation du nom et containment du chemin
+├── localauth.go                Garde de l'écriture locale (loopback + token bearer)
+├── writes.go                   Création d'un cocktail et upload d'image (endpoint local)
+├── respond.go                  Helpers de réponse JSON et format d'erreur uniforme
 ├── health.go                   Handler GET /health
 ├── openapi.go                  Service de la spec OpenAPI et de la doc Redoc
 ├── api/openapi.yaml            Contrat OpenAPI (spec-first) de toute la surface v1
@@ -120,12 +126,21 @@ CDN et pointe sur `/openapi.yaml` : aucune dépendance Go ni build front ajouté
 
 ## Endpoints
 
-Seuls `/health` et les routes de documentation sont réellement exposés à ce
-stade. Les routes métier décrites dans `api/openapi.yaml` sont le contrat cible
-et seront implémentées ultérieurement.
+Toute la surface v1 décrite dans `api/openapi.yaml` est implémentée et exposée.
+Les routes de lecture sont publiques ; l'écriture (`POST /cocktails`) n'est
+montée que si `LOCAL_WRITE_TOKEN` est défini, et reste réservée aux appels
+loopback authentifiés par token.
 
-| Méthode | Chemin         | Description                     | Réponse                     |
-| ------- | -------------- | ------------------------------- | --------------------------- |
-| `GET`   | `/health`      | Sonde de vivacité               | `200 {"status":"ok"}`       |
-| `GET`   | `/openapi.yaml`| Contrat OpenAPI (spec brute)    | `200` (application/yaml)    |
-| `GET`   | `/docs`        | Documentation Redoc             | `200` (text/html)           |
+| Méthode | Chemin              | Description                                        | Réponse                     |
+| ------- | ------------------- | -------------------------------------------------- | --------------------------- |
+| `GET`   | `/cocktails`        | Liste paginée et filtrable des cocktails           | `200` `CocktailList`        |
+| `GET`   | `/cocktails/search` | Recherche par ingrédients (`match=all\|any`)       | `200` `CocktailList`        |
+| `GET`   | `/cocktails/{id}`   | Détail d'un cocktail                               | `200` `Cocktail`            |
+| `GET`   | `/ingredients`      | Référentiel des ingrédients                        | `200` (array)               |
+| `GET`   | `/categories`       | Catégories distinctes des cocktails                | `200` (array)               |
+| `GET`   | `/tags`             | Tags distincts des cocktails                       | `200` (array)               |
+| `GET`   | `/images/{name}`    | Image d'un cocktail                                | `200` (image/\*)            |
+| `POST`  | `/cocktails`        | Ajout d'une recette et upload d'image (local)      | `201` `Cocktail`            |
+| `GET`   | `/health`           | Sonde de vivacité                                  | `200 {"status":"ok"}`       |
+| `GET`   | `/openapi.yaml`     | Contrat OpenAPI (spec brute)                       | `200` (application/yaml)    |
+| `GET`   | `/docs`             | Documentation Redoc                                | `200` (text/html)           |

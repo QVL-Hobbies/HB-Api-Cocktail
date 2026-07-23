@@ -12,9 +12,9 @@ info:
       - Ecriture locale (tag `local`) : ajout d'une recette et upload d'image,
         joignable uniquement en loopback 127.0.0.1 et protege par un token.
 
-    Ce document decrit l'integralite de la surface v1. La spec et sa documentation
-    sont les seules routes reellement exposees a ce stade ; les routes metier sont
-    le contrat cible et seront implementees ulterieurement.
+    Ce document decrit l'integralite de la surface v1, entierement implementee et
+    exposee : lecture et recherche des cocktails, referentiels, service d'images,
+    ecriture locale et sonde de disponibilite.
 servers:
   - url: http://127.0.0.1:8080
     description: Service local
@@ -244,6 +244,8 @@ paths:
                 format: binary
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /health:
     get:
       tags: [system]

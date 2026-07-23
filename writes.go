@@ -244,7 +244,7 @@ func persistCocktail(ctx context.Context, w http.ResponseWriter, db *sql.DB, con
 			writeInternalError(w)
 			return cocktail{}, false
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE cocktails SET image_name = ?, image_path = ? WHERE id = ?", imageName, storagePath, id); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE cocktails SET image_name = ? WHERE id = ?", imageName, id); err != nil {
 			writeInternalError(w)
 			return cocktail{}, false
 		}

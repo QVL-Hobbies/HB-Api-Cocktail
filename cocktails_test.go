@@ -60,7 +60,6 @@ type seedCocktail struct {
 	alcoholic    int
 	season       string
 	imageName    string
-	imagePath    string
 	tags         []string
 	ingredients  []seedIngredient
 }
@@ -70,7 +69,7 @@ func testDataset() []seedCocktail {
 		{
 			id: 1, name: "Margarita", instructions: "Shake with ice and strain.",
 			glass: "Margarita glass", category: "Classic", strength: "Strong", alcoholic: 1,
-			season: "Summer", imageName: "margarita.jpg", imagePath: "/srv/data/images/margarita.jpg",
+			season: "Summer", imageName: "margarita.jpg",
 			tags: []string{"tequila", "sour", "iba"},
 			ingredients: []seedIngredient{
 				{"Tequila", "50", "ml"},
@@ -81,7 +80,7 @@ func testDataset() []seedCocktail {
 		{
 			id: 2, name: "Mojito", instructions: "Muddle mint and build over ice.",
 			glass: "Highball glass", category: "Classic", strength: "Medium", alcoholic: 1,
-			season: "Summer", imageName: "mojito.jpg", imagePath: "/srv/data/images/mojito.jpg",
+			season: "Summer", imageName: "mojito.jpg",
 			tags: []string{"rum", "refreshing"},
 			ingredients: []seedIngredient{
 				{"White rum", "40", "ml"},
@@ -92,7 +91,7 @@ func testDataset() []seedCocktail {
 		{
 			id: 3, name: "Virgin Mojito", instructions: "Muddle mint and top with soda.",
 			glass: "Highball glass", category: "Mocktail", strength: "Soft", alcoholic: 0,
-			season: "Summer", imageName: "", imagePath: "",
+			season: "Summer", imageName: "",
 			tags: []string{"mocktail", "refreshing"},
 			ingredients: []seedIngredient{
 				{"Mint", "6", "leaves"},
@@ -103,7 +102,7 @@ func testDataset() []seedCocktail {
 		{
 			id: 4, name: "Hot Toddy", instructions: "Combine and stir with hot water.",
 			glass: "Mug", category: "Warmer", strength: "Strong", alcoholic: 1,
-			season: "Winter", imageName: "hot_toddy.png", imagePath: "/srv/data/images/hot_toddy.png",
+			season: "Winter", imageName: "hot_toddy.png",
 			tags: []string{"whisky", "warm"},
 			ingredients: []seedIngredient{
 				{"Whisky", "40", "ml"},
@@ -113,7 +112,7 @@ func testDataset() []seedCocktail {
 		{
 			id: 5, name: "Shirley Temple", instructions: "Build over ice and add grenadine.",
 			glass: "Highball glass", category: "Mocktail", strength: "Soft", alcoholic: 0,
-			season: "Winter", imageName: "", imagePath: "",
+			season: "Winter", imageName: "",
 			tags: []string{"mocktail", "sweet"},
 			ingredients: []seedIngredient{
 				{"Ginger ale", "120", "ml"},
@@ -123,7 +122,7 @@ func testDataset() []seedCocktail {
 		{
 			id: 6, name: "Plain Water", instructions: "Pour water.",
 			glass: "Glass", category: "Other", strength: "None", alcoholic: 0,
-			season: "", imageName: "", imagePath: "",
+			season: "", imageName: "",
 			tags:        []string{},
 			ingredients: []seedIngredient{},
 		},
@@ -134,9 +133,9 @@ func seedTestData(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, c := range testDataset() {
 		_, err := db.Exec(
-			`INSERT INTO cocktails (id, name, instructions, glass, category, strength, alcoholic, season, image_name, image_path)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			c.id, c.name, c.instructions, c.glass, c.category, c.strength, c.alcoholic, c.season, c.imageName, c.imagePath,
+			`INSERT INTO cocktails (id, name, instructions, glass, category, strength, alcoholic, season, image_name)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			c.id, c.name, c.instructions, c.glass, c.category, c.strength, c.alcoholic, c.season, c.imageName,
 		)
 		if err != nil {
 			t.Fatalf("seed cocktail %q: %v", c.name, err)

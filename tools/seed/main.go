@@ -26,7 +26,6 @@ type seedCocktail struct {
 	Alcoholic    bool             `json:"alcoholic"`
 	Season       string           `json:"season"`
 	ImageName    string           `json:"imageName"`
-	ImagePath    string           `json:"imagePath"`
 	Ingredients  []seedIngredient `json:"ingredients"`
 	Tags         []string         `json:"tags"`
 }
@@ -114,10 +113,10 @@ func clearSeededData(tx *sql.Tx) error {
 
 func insertCocktail(tx *sql.Tx, cocktail seedCocktail) error {
 	result, err := tx.Exec(
-		`INSERT INTO cocktails (name, instructions, glass, category, strength, alcoholic, season, image_name, image_path)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO cocktails (name, instructions, glass, category, strength, alcoholic, season, image_name)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		cocktail.Name, cocktail.Instructions, cocktail.Glass, cocktail.Category,
-		cocktail.Strength, cocktail.Alcoholic, cocktail.Season, cocktail.ImageName, cocktail.ImagePath,
+		cocktail.Strength, cocktail.Alcoholic, cocktail.Season, cocktail.ImageName,
 	)
 	if err != nil {
 		return fmt.Errorf("insert cocktail %q: %w", cocktail.Name, err)

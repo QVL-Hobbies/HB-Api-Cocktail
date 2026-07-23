@@ -28,8 +28,18 @@ func handleOpenAPISpec(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write(openapiSpec)
 }
 
+const docsContentSecurityPolicy = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; " +
+	"script-src https://cdn.redoc.ly 'unsafe-eval'; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"font-src 'self' data:; " +
+	"img-src 'self' data: blob:; " +
+	"connect-src 'self'; " +
+	"worker-src blob:; " +
+	"child-src blob:"
+
 func handleDocs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", docsContentSecurityPolicy)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(docsPage))
 }

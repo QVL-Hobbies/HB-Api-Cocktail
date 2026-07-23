@@ -19,8 +19,7 @@ CREATE TABLE IF NOT EXISTS cocktails (
 	strength     TEXT    NOT NULL,
 	alcoholic    INTEGER NOT NULL,
 	season       TEXT    NOT NULL DEFAULT '',
-	image_name   TEXT    NOT NULL DEFAULT '',
-	image_path   TEXT    NOT NULL DEFAULT ''
+	image_name   TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (

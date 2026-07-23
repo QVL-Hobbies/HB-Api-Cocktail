@@ -312,6 +312,32 @@ func TestGetImageInternalSymlinkToLegitImageReturns200(t *testing.T) {
 	}
 }
 
+func TestGetImageServedWhenParentComponentIsSymlink(t *testing.T) {
+	parent := t.TempDir()
+	realRoot := filepath.Join(parent, "real_root")
+	realImagesDir := filepath.Join(realRoot, "images")
+	if err := os.MkdirAll(realImagesDir, 0o755); err != nil {
+		t.Fatalf("create real images dir: %v", err)
+	}
+	want := writeImageFile(t, realImagesDir, "mojito.jpg", []byte("\xFF\xD8\xFF\xE0JFIF-mojito-body-bytes"))
+
+	linkRoot := filepath.Join(parent, "link_root")
+	createSymlinkOrSkip(t, realRoot, linkRoot)
+
+	resolvedImagesDir := resolveImagesDir(filepath.Join(linkRoot, "images"))
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /images/{name}", handleGetImage(resolvedImagesDir))
+	handler := withSecurityHeaders(mux)
+
+	rec := doGet(t, handler, "/images/mojito.jpg")
+
+	assertStatus(t, rec, http.StatusOK)
+	assertContentType(t, rec, "image/jpeg")
+	if !bytes.Equal(rec.Body.Bytes(), want) {
+		t.Fatalf("served body does not match target image bytes through symlinked parent")
+	}
+}
+
 func TestGetImageNameLongerThan255Returns404WithoutLeak(t *testing.T) {
 	handler, imagesDir, parent := setupImageServer(t)
 	name := strings.Repeat("a", 300) + ".jpg"

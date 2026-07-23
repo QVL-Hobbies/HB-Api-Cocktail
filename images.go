@@ -26,7 +26,7 @@ var imageExtensionsByContentType = map[string]string{
 	"image/webp": ".webp",
 }
 
-func handleGetImage(imagesDir string) http.HandlerFunc {
+func handleGetImage(resolvedImagesDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
 
@@ -36,7 +36,7 @@ func handleGetImage(imagesDir string) http.HandlerFunc {
 			return
 		}
 
-		fullPath, err := resolveContainedImagePath(imagesDir, name)
+		fullPath, err := resolveContainedImagePath(resolvedImagesDir, name)
 		if err != nil {
 			if errors.Is(err, errImageNotFound) {
 				writeError(w, http.StatusNotFound, "not_found", "image not found")
@@ -111,25 +111,17 @@ func containedPath(dir, name string) (string, error) {
 	return absFull, nil
 }
 
-func resolveContainedImagePath(imagesDir, name string) (string, error) {
-	absFull, err := containedPath(imagesDir, name)
-	if err != nil {
-		return "", err
-	}
+func resolveContainedImagePath(resolvedImagesDir, name string) (string, error) {
+	candidate := filepath.Join(resolvedImagesDir, name)
 
-	absDir, err := filepath.Abs(imagesDir)
-	if err != nil {
-		return "", err
-	}
-
-	resolved, err := filepath.EvalSymlinks(absFull)
+	resolved, err := filepath.EvalSymlinks(candidate)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", errImageNotFound
 		}
 		return "", err
 	}
-	if !strings.HasPrefix(resolved, absDir+string(os.PathSeparator)) {
+	if !strings.HasPrefix(resolved, resolvedImagesDir+string(os.PathSeparator)) {
 		return "", errImageNotFound
 	}
 	return resolved, nil
