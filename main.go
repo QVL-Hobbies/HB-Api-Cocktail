@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"hb-api-cocktail/internal/database"
 )
 
 func main() {
@@ -18,6 +20,12 @@ func main() {
 
 func run() error {
 	config := LoadConfig()
+
+	db, err := database.Open(config.DBPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)

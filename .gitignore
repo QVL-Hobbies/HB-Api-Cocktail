@@ -6,3 +6,4 @@
 .env.local
 *.exe
 /hb-api-cocktail
+/tools/seed/data.json

@@ -45,15 +45,57 @@ l'environnement de son process. Injecter donc les variables directement dans cet
 environnement — via `export` (ou l'équivalent shell) avant le lancement, ou via un
 outillage qui source les variables avant de démarrer le process.
 
+## Base de données
+
+Le service utilise **SQLite** via le driver pure-Go `modernc.org/sqlite` (aucune
+dépendance cgo, build standard). Au démarrage, il ouvre le fichier pointé par
+`DB_PATH`, crée le dossier parent si besoin, puis applique le schéma de façon
+idempotente (`CREATE TABLE IF NOT EXISTS`). Les clés étrangères sont activées.
+
+### Schéma
+
+| Table                  | Rôle                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| `cocktails`            | Recette : `name`, `instructions`, `glass`, `category`, `strength`, `alcoholic`, `season`, `image_name`, `image_path` |
+| `ingredients`          | Ingrédient unique par `name`                                 |
+| `cocktail_ingredients` | Liaison cocktail ↔ ingrédient (`quantity`, `unit`)           |
+| `cocktail_tags`        | Tags multiples par cocktail (`cocktail_id`, `tag`)           |
+
+Relations :
+
+- `cocktails 1—N cocktail_ingredients N—1 ingredients` (many-to-many avec quantité/unité)
+- `cocktails 1—N cocktail_tags` (tags multiples, un tag = une ligne)
+- Les liaisons sont supprimées en cascade avec leur cocktail (`ON DELETE CASCADE`).
+
+Le contenu textuel des recettes est en **anglais**.
+
+## Script de seed
+
+Charge un jeu de recettes de test dans une base locale (cocktails, ingrédients,
+liaisons avec quantités, tags).
+
+```bash
+go run ./tools/seed
+```
+
+- Lit `DB_PATH` (défaut `./data/cocktail.db`) et crée le schéma si absent.
+- Lit le jeu de données depuis `SEED_FILE` (défaut `tools/seed/data.json`).
+- Repart d'un état vide : purge les tables dans la transaction avant insertion,
+  donc ré-exécutable sans doublon (relancer laisse le même contenu).
+- Le fichier `tools/seed/data.json` est un **jeu de test non versionné**
+  (gitignoré), comme le `.db` produit.
+
 ## Structure du repo
 
 ```
 .
-├── main.go        Point d'entrée : chargement config, serveur HTTP, arrêt gracieux
-├── config.go      Chargement de la configuration depuis l'environnement
-├── health.go      Handler GET /health
+├── main.go                     Point d'entrée : config, ouverture base, serveur HTTP, arrêt gracieux
+├── config.go                   Chargement de la configuration depuis l'environnement
+├── health.go                   Handler GET /health
+├── internal/database/          Ouverture SQLite + schéma partagés (service + seed)
+├── tools/                      Scripts d'outillage local (voir tools/README.md)
+│   └── seed/                   Script de chargement d'un jeu de test
 ├── go.mod
-├── tools/         Scripts d'outillage local (voir tools/README.md)
 ├── .gitignore
 └── README.md
 ```
