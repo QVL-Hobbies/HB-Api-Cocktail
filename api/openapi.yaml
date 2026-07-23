@@ -162,6 +162,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Ingredient'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /categories:
     get:
       tags: [referentials]
@@ -179,6 +181,8 @@ paths:
                 items:
                   type: string
                 example: [Classic, Modern, Refreshing]
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /tags:
     get:
       tags: [referentials]
@@ -196,6 +200,8 @@ paths:
                 items:
                   type: string
                 example: [iba, sour, refreshing, mocktail]
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /images/{name}:
     get:
       tags: [images]
