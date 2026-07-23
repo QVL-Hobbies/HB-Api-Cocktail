@@ -1,0 +1,8 @@
+*.db
+*.db-shm
+*.db-wal
+/data/
+.env
+.env.local
+*.exe
+/hb-api-cocktail
