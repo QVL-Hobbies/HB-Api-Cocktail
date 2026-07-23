@@ -229,6 +229,10 @@ paths:
               schema:
                 type: string
                 format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
         '404':
           $ref: '#/components/responses/NotFound'
   /health:

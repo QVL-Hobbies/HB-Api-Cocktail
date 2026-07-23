@@ -34,6 +34,7 @@ func run() error {
 	mux.HandleFunc("GET /ingredients", handleListIngredients(db))
 	mux.HandleFunc("GET /categories", handleListCategories(db))
 	mux.HandleFunc("GET /tags", handleListTags(db))
+	mux.HandleFunc("GET /images/{name}", handleGetImage(config.ImagesDir))
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /openapi.yaml", handleOpenAPISpec)
 	mux.HandleFunc("GET /docs", handleDocs)
