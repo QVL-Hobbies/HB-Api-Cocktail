@@ -124,6 +124,8 @@ paths:
                 $ref: '#/components/schemas/CocktailList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /cocktails/{id}:
     get:
       tags: [public]

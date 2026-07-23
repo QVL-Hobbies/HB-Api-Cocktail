@@ -29,6 +29,7 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /cocktails", handleListCocktails(db))
+	mux.HandleFunc("GET /cocktails/search", handleSearchCocktails(db))
 	mux.HandleFunc("GET /cocktails/{id}", handleGetCocktail(db))
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /openapi.yaml", handleOpenAPISpec)

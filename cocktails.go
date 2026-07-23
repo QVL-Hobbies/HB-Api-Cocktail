@@ -179,6 +179,98 @@ func handleGetCocktail(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func handleSearchCocktails(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+
+		names, ok := parseIngredientNames(query.Get("ingredients"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "bad_request", "invalid ingredients parameter")
+			return
+		}
+		mode, ok := parseMatchMode(query.Get("match"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "bad_request", "invalid match parameter")
+			return
+		}
+		limit, ok := parseLimit(query.Get("limit"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "bad_request", "invalid limit parameter")
+			return
+		}
+		offset, ok := parseOffset(query.Get("offset"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "bad_request", "invalid offset parameter")
+			return
+		}
+
+		ctx := r.Context()
+		matching, matchingArgs := matchingCocktailsQuery(mode, names)
+
+		var total int
+		countArgs := append([]any{}, matchingArgs...)
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+matching+")", countArgs...).Scan(&total); err != nil {
+			writeInternalError(w)
+			return
+		}
+
+		pageArgs := append(append([]any{}, matchingArgs...), limit, offset)
+		rows, err := db.QueryContext(ctx, selectCocktailColumns+" WHERE id IN ("+matching+") ORDER BY id LIMIT ? OFFSET ?", pageArgs...)
+		if err != nil {
+			writeInternalError(w)
+			return
+		}
+		defer rows.Close()
+
+		items := []cocktail{}
+		ids := []int64{}
+		index := map[int64]int{}
+		for rows.Next() {
+			c, err := scanCocktail(rows)
+			if err != nil {
+				writeInternalError(w)
+				return
+			}
+			index[c.ID] = len(items)
+			items = append(items, c)
+			ids = append(ids, c.ID)
+		}
+		if err := rows.Err(); err != nil {
+			writeInternalError(w)
+			return
+		}
+
+		if err := attachTags(ctx, db, items, ids, index); err != nil {
+			writeInternalError(w)
+			return
+		}
+		if err := attachIngredients(ctx, db, items, ids, index); err != nil {
+			writeInternalError(w)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, cocktailList{
+			Items:  items,
+			Total:  total,
+			Limit:  limit,
+			Offset: offset,
+		})
+	}
+}
+
+func matchingCocktailsQuery(mode string, names []string) (string, []any) {
+	placeholders := sqlPlaceholders(len(names))
+	args := make([]any, len(names))
+	for i, name := range names {
+		args[i] = name
+	}
+	from := "FROM cocktail_ingredients ci JOIN ingredients i ON i.id = ci.ingredient_id WHERE LOWER(i.name) IN (" + placeholders + ")"
+	if mode == matchAll {
+		return "SELECT ci.cocktail_id " + from + " GROUP BY ci.cocktail_id HAVING COUNT(DISTINCT LOWER(i.name)) = ?", append(args, len(names))
+	}
+	return "SELECT DISTINCT ci.cocktail_id " + from, args
+}
+
 func scanCocktail(s rowScanner) (cocktail, error) {
 	var c cocktail
 	var alcoholic int64
@@ -237,14 +329,57 @@ func attachIngredients(ctx context.Context, db *sql.DB, items []cocktail, ids []
 	return rows.Err()
 }
 
+func sqlPlaceholders(n int) string {
+	marks := make([]string, n)
+	for i := range marks {
+		marks[i] = "?"
+	}
+	return strings.Join(marks, ", ")
+}
+
 func inPlaceholders(ids []int64) (string, []any) {
-	placeholders := make([]string, len(ids))
 	args := make([]any, len(ids))
 	for i, id := range ids {
-		placeholders[i] = "?"
 		args[i] = id
 	}
-	return strings.Join(placeholders, ", "), args
+	return sqlPlaceholders(len(ids)), args
+}
+
+const (
+	matchAll           = "all"
+	matchAny           = "any"
+	maxIngredientNames = 20
+)
+
+func parseIngredientNames(raw string) ([]string, bool) {
+	seen := map[string]struct{}{}
+	names := []string{}
+	for _, part := range strings.Split(raw, ",") {
+		name := strings.ToLower(strings.TrimSpace(part))
+		if name == "" {
+			continue
+		}
+		if _, exists := seen[name]; exists {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+	if len(names) == 0 || len(names) > maxIngredientNames {
+		return nil, false
+	}
+	return names, true
+}
+
+func parseMatchMode(raw string) (string, bool) {
+	switch raw {
+	case "":
+		return matchAll, true
+	case matchAll, matchAny:
+		return raw, true
+	default:
+		return "", false
+	}
 }
 
 func parseAlcoholic(value string) (int, bool) {
