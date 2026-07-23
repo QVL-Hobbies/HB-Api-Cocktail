@@ -54,6 +54,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CocktailList'
+              examples:
+                page:
+                  summary: Premiere page filtree sur category=Classic
+                  value:
+                    items:
+                      - id: 1
+                        name: Margarita
+                        instructions: Rub the rim of the glass with lime and dip it in salt. Shake tequila, triple sec and lime juice with ice, then strain into the glass.
+                        glass: Margarita glass
+                        category: Classic
+                        strength: Strong
+                        alcoholic: true
+                        season: Summer
+                        image: margarita.jpg
+                        tags: [iba, sour, tequila]
+                        ingredients:
+                          - { name: Lime juice, quantity: '15', unit: ml }
+                          - { name: Salt, quantity: '', unit: rim }
+                          - { name: Tequila, quantity: '50', unit: ml }
+                          - { name: Triple sec, quantity: '20', unit: ml }
+                      - id: 4
+                        name: Old Fashioned
+                        instructions: Stir sugar, bitters and a splash of water in the glass. Add bourbon and ice, stir, then garnish with an orange peel.
+                        glass: Rocks glass
+                        category: Classic
+                        strength: Strong
+                        alcoholic: true
+                        season: Winter
+                        image: old-fashioned.jpg
+                        tags: [iba, strong, whiskey]
+                        ingredients:
+                          - { name: Angostura bitters, quantity: '2', unit: dashes }
+                          - { name: Bourbon, quantity: '60', unit: ml }
+                          - { name: Orange peel, quantity: '1', unit: piece }
+                          - { name: Sugar, quantity: '1', unit: cube }
+                    total: 2
+                    limit: 20
+                    offset: 0
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -70,6 +108,15 @@ paths:
         - localWriteToken: []
       requestBody:
         required: true
+        description: |
+          Requete `multipart/form-data` a deux parts :
+            - `cocktail` (obligatoire) : recette serialisee en JSON, conforme a
+              `CocktailInput`. Les champs inconnus sont refuses.
+            - `image` (optionnelle) : fichier binaire jpeg, png ou webp, valide
+              sur le contenu reel du fichier, taille maximale 2 Mo. Le nom du
+              fichier stocke est genere par le serveur (`{id}.{ext}`).
+          Authentification requise : en-tete `Authorization: Bearer <token>` et
+          appel emis depuis 127.0.0.1.
         content:
           multipart/form-data:
             schema:
@@ -86,6 +133,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cocktail'
+              examples:
+                created:
+                  summary: Cocktail cree avec image (nom genere par le serveur)
+                  value:
+                    id: 6
+                    name: Negroni
+                    instructions: Stir gin, Campari and sweet vermouth with ice, then strain over a large ice cube and garnish with an orange peel.
+                    glass: Rocks glass
+                    category: Classic
+                    strength: Strong
+                    alcoholic: true
+                    season: All year
+                    image: 6.jpg
+                    tags: [bitter, gin, iba]
+                    ingredients:
+                      - { name: Campari, quantity: '30', unit: ml }
+                      - { name: Gin, quantity: '30', unit: ml }
+                      - { name: Sweet vermouth, quantity: '30', unit: ml }
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -126,11 +191,60 @@ paths:
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Liste paginee des cocktails correspondants.
+          description: |
+            Liste paginee des cocktails correspondants. Un ingredient inconnu ne
+            provoque pas d'erreur : il reduit simplement les correspondances,
+            jusqu'a une liste vide (`items: []`, `total: 0`).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CocktailList'
+              examples:
+                matchAll:
+                  summary: ingredients=lime juice,mint avec match=all
+                  value:
+                    items:
+                      - id: 2
+                        name: Mojito
+                        instructions: Muddle mint leaves with sugar and lime juice. Add rum, top with soda water and crushed ice, then stir gently.
+                        glass: Highball glass
+                        category: Refreshing
+                        strength: Medium
+                        alcoholic: true
+                        season: Summer
+                        image: mojito.jpg
+                        tags: [mint, refreshing, rum]
+                        ingredients:
+                          - { name: Lime juice, quantity: '25', unit: ml }
+                          - { name: Mint, quantity: '6', unit: leaves }
+                          - { name: Soda water, quantity: '', unit: top }
+                          - { name: Sugar, quantity: '2', unit: tsp }
+                          - { name: White rum, quantity: '50', unit: ml }
+                      - id: 3
+                        name: Virgin Mojito
+                        instructions: Muddle mint leaves with sugar and lime juice. Top with soda water and crushed ice, then stir gently.
+                        glass: Highball glass
+                        category: Refreshing
+                        strength: None
+                        alcoholic: false
+                        season: Summer
+                        image: virgin-mojito.jpg
+                        tags: [mint, mocktail, refreshing]
+                        ingredients:
+                          - { name: Lime juice, quantity: '25', unit: ml }
+                          - { name: Mint, quantity: '6', unit: leaves }
+                          - { name: Soda water, quantity: '', unit: top }
+                          - { name: Sugar, quantity: '2', unit: tsp }
+                    total: 2
+                    limit: 20
+                    offset: 0
+                emptyMatch:
+                  summary: Ingredient inconnu, aucune correspondance
+                  value:
+                    items: []
+                    total: 0
+                    limit: 20
+                    offset: 0
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -150,6 +264,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cocktail'
+              examples:
+                margarita:
+                  summary: Cocktail id=1
+                  value:
+                    id: 1
+                    name: Margarita
+                    instructions: Rub the rim of the glass with lime and dip it in salt. Shake tequila, triple sec and lime juice with ice, then strain into the glass.
+                    glass: Margarita glass
+                    category: Classic
+                    strength: Strong
+                    alcoholic: true
+                    season: Summer
+                    image: margarita.jpg
+                    tags: [iba, sour, tequila]
+                    ingredients:
+                      - { name: Lime juice, quantity: '15', unit: ml }
+                      - { name: Salt, quantity: '', unit: rim }
+                      - { name: Tequila, quantity: '50', unit: ml }
+                      - { name: Triple sec, quantity: '20', unit: ml }
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -164,13 +297,22 @@ paths:
       security: []
       responses:
         '200':
-          description: Liste des ingredients.
+          description: Liste des ingredients, triee par nom.
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Ingredient'
+              examples:
+                ingredients:
+                  summary: Referentiel d'ingredients
+                  value:
+                    - { id: 5, name: Angostura bitters }
+                    - { id: 4, name: Bourbon }
+                    - { id: 2, name: Lime juice }
+                    - { id: 1, name: Tequila }
+                    - { id: 3, name: Triple sec }
         '500':
           $ref: '#/components/responses/InternalServerError'
   /categories:
@@ -182,7 +324,7 @@ paths:
       security: []
       responses:
         '200':
-          description: Liste des categories.
+          description: Liste des categories, triee.
           content:
             application/json:
               schema:
@@ -190,6 +332,10 @@ paths:
                 items:
                   type: string
                 example: [Classic, Modern, Refreshing]
+              examples:
+                categories:
+                  summary: Categories distinctes du seed
+                  value: [Classic, Modern, Refreshing]
         '500':
           $ref: '#/components/responses/InternalServerError'
   /tags:
@@ -201,7 +347,7 @@ paths:
       security: []
       responses:
         '200':
-          description: Liste des tags.
+          description: Liste des tags, triee.
           content:
             application/json:
               schema:
@@ -209,6 +355,10 @@ paths:
                 items:
                   type: string
                 example: [iba, sour, refreshing, mocktail]
+              examples:
+                tags:
+                  summary: Tags distincts du seed
+                  value: [bitter, iba, mint, mocktail, party, refreshing, rum, sour, strong, tequila, vodka, whiskey]
         '500':
           $ref: '#/components/responses/InternalServerError'
   /images/{name}:
@@ -430,6 +580,19 @@ components:
           allOf:
             - $ref: '#/components/schemas/CocktailInput'
           description: Recette serialisee en JSON dans la part `cocktail`.
+          example:
+            name: Negroni
+            instructions: Stir gin, Campari and sweet vermouth with ice, then strain over a large ice cube and garnish with an orange peel.
+            glass: Rocks glass
+            category: Classic
+            strength: Strong
+            alcoholic: true
+            season: All year
+            tags: [gin, bitter, iba]
+            ingredients:
+              - { name: Gin, quantity: '30', unit: ml }
+              - { name: Campari, quantity: '30', unit: ml }
+              - { name: Sweet vermouth, quantity: '30', unit: ml }
         image:
           type: string
           format: binary
@@ -497,7 +660,21 @@ components:
       properties:
         error:
           type: string
-          description: Code d'erreur stable, lisible par machine.
+          description: |
+            Code d'erreur stable, lisible par machine. Valeurs possibles :
+              - `bad_request` (400) : parametre de requete ou corps invalide.
+              - `unauthorized` (401) : token d'ecriture locale manquant ou invalide.
+              - `forbidden` (403) : appel refuse car l'origine n'est pas loopback.
+              - `not_found` (404) : ressource introuvable (cocktail ou image).
+              - `payload_too_large` (413) : charge utile trop volumineuse.
+              - `internal_error` (500) : erreur interne du serveur.
+          enum:
+            - bad_request
+            - unauthorized
+            - forbidden
+            - not_found
+            - payload_too_large
+            - internal_error
           example: not_found
         message:
           type: string
@@ -505,38 +682,110 @@ components:
           example: cocktail not found
   responses:
     BadRequest:
-      description: Requete invalide.
+      description: |
+        Requete invalide. Le champ `message` precise la cause exacte
+        (parametre de pagination ou de filtre invalide, corps multipart mal
+        forme, part `cocktail` manquante, echec de validation du cocktail,
+        type d'image non supporte, etc.).
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          examples:
+            invalidLimit:
+              summary: Parametre limit hors bornes (1..100)
+              value:
+                error: bad_request
+                message: invalid limit parameter
+            invalidCocktailId:
+              summary: Identifiant de cocktail non entier ou inferieur a 1
+              value:
+                error: bad_request
+                message: invalid cocktail id
+            invalidIngredients:
+              summary: Parametre ingredients vide ou trop long (max 20 noms)
+              value:
+                error: bad_request
+                message: invalid ingredients parameter
+            missingCocktailPart:
+              summary: Part multipart cocktail absente ou vide (POST)
+              value:
+                error: bad_request
+                message: missing cocktail part
+            validationFailed:
+              summary: Echec de validation du cocktail (POST)
+              value:
+                error: bad_request
+                message: name is required
+            unsupportedImage:
+              summary: Contenu d'image non jpeg/png/webp (POST)
+              value:
+                error: bad_request
+                message: unsupported image type
     Unauthorized:
-      description: Token d'ecriture manquant ou invalide.
+      description: Token d'ecriture locale manquant ou invalide.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              summary: Bearer absent ou ne correspondant pas a LOCAL_WRITE_TOKEN
+              value:
+                error: unauthorized
+                message: unauthorized
     Forbidden:
-      description: Appel refuse (origine non loopback).
+      description: Appel refuse car l'origine n'est pas loopback (127.0.0.1).
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          examples:
+            forbidden:
+              summary: Requete emise depuis une adresse non loopback
+              value:
+                error: forbidden
+                message: forbidden
     PayloadTooLarge:
-      description: Charge trop volumineuse (image superieure a 2 Mo).
+      description: |
+        Charge utile trop volumineuse. L'image depasse 2 Mo ou le corps
+        multipart global depasse la limite acceptee.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          examples:
+            payloadTooLarge:
+              summary: Image ou corps multipart au-dela de la limite
+              value:
+                error: payload_too_large
+                message: request payload too large
     NotFound:
-      description: Ressource introuvable.
+      description: Ressource introuvable (cocktail ou image).
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          examples:
+            cocktailNotFound:
+              summary: Aucun cocktail pour cet identifiant
+              value:
+                error: not_found
+                message: cocktail not found
+            imageNotFound:
+              summary: Nom d'image invalide ou fichier absent
+              value:
+                error: not_found
+                message: image not found
     InternalServerError:
       description: Erreur interne du serveur.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Erreur inattendue cote serveur
+              value:
+                error: internal_error
+                message: internal server error
