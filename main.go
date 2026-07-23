@@ -28,13 +28,15 @@ func run() error {
 	defer db.Close()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /cocktails", handleListCocktails(db))
+	mux.HandleFunc("GET /cocktails/{id}", handleGetCocktail(db))
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /openapi.yaml", handleOpenAPISpec)
 	mux.HandleFunc("GET /docs", handleDocs)
 
 	server := &http.Server{
 		Addr:              config.ListenAddr(),
-		Handler:           mux,
+		Handler:           withSecurityHeaders(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -58,4 +60,11 @@ func run() error {
 		defer cancel()
 		return server.Shutdown(shutdownCtx)
 	}
+}
+
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(w, r)
+	})
 }
